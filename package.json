@@ -1,6 +1,6 @@
 {
   "name": "agent-diff-view",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Browser-based interactive git diff reviewer for AI coding agents",
   "bin": {
     "agent-diff-view": "./agent-diff-view"
@@ -16,5 +16,16 @@
     "type": "git",
     "url": "https://github.com/christianalfoni/agent-diff-view.git"
   },
-  "keywords": ["ai", "agent", "claude", "gemini", "openai", "codex", "opencode", "git", "diff", "review"]
+  "keywords": [
+    "ai",
+    "agent",
+    "claude",
+    "gemini",
+    "openai",
+    "codex",
+    "opencode",
+    "git",
+    "diff",
+    "review"
+  ]
 }
