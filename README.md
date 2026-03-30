@@ -2,6 +2,8 @@
 
 A browser-based interactive git diff reviewer for [Claude Code](https://claude.ai/code).
 
+![claude-diff-view](screenshot.png)
+
 Type `/changes` in Claude Code and a local browser tab opens. Browse changed files,
 navigate hunks, leave targeted comments on the ones that matter, hit **⌘↵** to submit —
 Claude receives a structured prompt that maps every comment to its exact file and hunk.
