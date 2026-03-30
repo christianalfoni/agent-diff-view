@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Changes Review</title>
+<style>
+  :root {
+    --bg:      #0f1117;
+    --bg2:     #161b22;
+    --bg3:     #1d2230;
+    --border:  #272d3d;
+    --fg:      #cdd6f4;
+    --dim:     #4a5270;
+    --accent:  #7aa2f7;
+    --added:   #9ece6a;
+    --removed: #f7768e;
+    --warning: #e0af68;
+    --r:       2px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    font-size: 12px;
+    background: var(--bg);
+    color: var(--fg);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    height: 34px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .header-title { color: var(--accent); font-size: 12px; white-space: nowrap; }
+  .header-hints { flex: 1; font-size: 11px; color: var(--dim); white-space: nowrap; overflow: hidden; }
+  .hint-key { color: var(--fg); opacity: 0.5; }
+  #comment-summary { font-size: 11px; color: var(--warning); white-space: nowrap; }
+  #submit-btn {
+    padding: 3px 12px;
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+    border-radius: var(--r);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    transition: background .1s, color .1s, border-color .1s;
+  }
+  #submit-btn:hover { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+
+  /* ── Body layout ── */
+  .layout { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── File list ── */
+  #file-list {
+    width: 200px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    background: var(--bg2);
+    display: flex;
+    flex-direction: column;
+  }
+  .list-heading {
+    padding: 5px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--dim);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+    transition: background .1s;
+    border-left: 2px solid transparent;
+  }
+  .file-item:hover  { background: var(--bg3); }
+  .file-item.active { background: var(--bg3); border-left-color: var(--accent); }
+  .file-item.active .file-name { color: var(--accent); }
+  .file-status { font-size: 11px; font-weight: 700; width: 10px; flex-shrink: 0; text-align: center; }
+  .s-added    { color: var(--added); }
+  .s-deleted  { color: var(--removed); }
+  .s-modified { color: var(--warning); }
+  .s-renamed  { color: var(--accent); }
+  .file-name  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+  .file-badge {
+    font-size: 9px;
+    color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 15%, transparent);
+    border-radius: 2px;
+    padding: 1px 4px;
+    flex-shrink: 0;
+  }
+
+  /* ── Diff panel ── */
+  #diff-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Hunk nav bar */
+  #hunk-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #file-title {
+    font-size: 12px;
+    font-weight: 600;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #hunk-counter { font-size: 11px; color: var(--dim); flex-shrink: 0; }
+  .hunk-btn {
+    padding: 2px 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--dim);
+    border-radius: var(--r);
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    transition: border-color .1s, color .1s;
+  }
+  .hunk-btn:disabled { opacity: .3; cursor: not-allowed; }
+  .hunk-btn:not(:disabled):hover { border-color: var(--fg); color: var(--fg); }
+
+  /* Hunk header */
+  .hunk-header-line { font-size: 11px; color: var(--dim); }
+
+  /* Side-by-side diff */
+  .diff-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .diff-col { display: flex; flex-direction: column; min-width: 0; }
+  .diff-col-before { border-right: 1px solid var(--border); }
+  .diff-col-label {
+    padding: 3px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .label-before { background: #160d10; color: var(--removed); }
+  .label-after  { background: #0b1510; color: var(--added); }
+  .diff-pre-wrap { overflow-x: auto; }
+  .diff-pre {
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 11.5px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    tab-size: 2;
+    min-height: 48px;
+  }
+
+  /* Syntax highlighting */
+  .syn-kw   { color: #bb9af7; }
+  .syn-str  { color: #9ece6a; }
+  .syn-num  { color: #ff9e64; }
+  .syn-cm   { color: #565f89; font-style: italic; }
+  .syn-fn   { color: #7aa2f7; }
+  .syn-type { color: #2ac3de; }
+  .syn-op   { color: #89ddff; }
+  .syn-tag  { color: #f7768e; }
+  .syn-attr { color: #bb9af7; }
+  .syn-prop { color: #73daca; }
+  .syn-val  { color: #ff9e64; }
+  .syn-sel  { color: #7aa2f7; }
+  .syn-re   { color: #ff9e64; }
+  .bg-before { background: #0f080a; }
+  .bg-after  { background: #070f09; }
+  .empty-code { color: var(--dim); font-style: italic; }
+
+  /* Comment */
+  .comment-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 5px;
+  }
+  textarea.comment {
+    width: 100%;
+    min-height: 60px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    color: var(--fg);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 7px 10px;
+    resize: vertical;
+    line-height: 1.5;
+    transition: border-color .15s;
+  }
+  textarea.comment:focus     { outline: none; border-color: var(--accent); }
+  textarea.comment.has-value { border-color: color-mix(in srgb, var(--warning) 50%, transparent); }
+  textarea.comment::placeholder { color: var(--dim); }
+
+  /* Empty / done states */
+  #empty { color: var(--dim); align-self: center; margin: auto; }
+  #done-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: color-mix(in srgb, var(--bg) 94%, transparent);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #done-overlay.visible { display: flex; }
+  #done-overlay p       { font-size: 14px; font-weight: 600; color: var(--added); }
+  #done-overlay small   { font-size: 11px; color: var(--dim); }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="header-title">❯ changes review</span>
+  <span class="header-hints">
+    <span class="hint-key">⌘←→</span> hunk &nbsp;·&nbsp;
+    <span class="hint-key">⌘↑↓</span> file &nbsp;·&nbsp;
+    <span class="hint-key">⌘↵</span> submit
+  </span>
+  <span id="comment-summary"></span>
+  <button id="submit-btn">Submit</button>
+</header>
+
+<div class="layout">
+  <nav id="file-list">
+    <div class="list-heading">Files</div>
+  </nav>
+  <section id="diff-panel">
+    <p id="empty">Select a file from the list.</p>
+  </section>
+</div>
+
+<div id="done-overlay">
+  <p>✓ Review submitted</p>
+  <small>Closing…</small>
+</div>
+
+<script>
+const FILES = __DIFF_DATA__;
+
+const JS_HIGHLIGHT_RE = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)|(\/(?:[^\/\\]|\\.)+\/[gimsuy]*)|(\b(?:const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|new|delete|typeof|instanceof|in|of|class|extends|import|export|from|default|async|await|yield|try|catch|finally|throw|void|this|super)\b)|(\b(?:interface|type|enum|namespace|declare|abstract|implements|readonly|as|is|keyof|infer|satisfies|override)\b)|(\b(?:true|false|null|undefined|NaN|Infinity)\b)|(\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b)|(=>|\.{3}|\?\.|&&|\|\||[!=]==?|[<>]=?|[+\-*\/%]=?|[&|^~])/g;
+
+const STATUS_ICON  = { added: '+', deleted: '−', modified: '±', renamed: '~', unknown: '?' };
+const STATUS_CLASS = { added: 's-added', deleted: 's-deleted', modified: 's-modified', renamed: 's-renamed' };
+
+const state = { file: 0, hunk: 0, comments: {} };
+
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const key = (fi, hi) => `${fi}:${hi}`;
+
+// ── Syntax highlighting ───────────────────────────────────────────────────
+function getLang(path) {
+  const ext = path.split('.').pop().toLowerCase();
+  const map = {
+    js: 'js', mjs: 'js', cjs: 'js', jsx: 'jsx',
+    ts: 'ts', mts: 'ts', cts: 'ts', tsx: 'tsx',
+    html: 'html', htm: 'html', svg: 'html', xml: 'html',
+    css: 'css', scss: 'css', less: 'css',
+    json: 'json',
+  };
+  return map[ext] || null;
+}
+
+function highlight(code, lang) {
+  if (!lang) return esc(code);
+  const escaped = esc(code);
+
+  if (lang === 'json') {
+    return escaped.replace(
+      /("(?:[^"\\\\]|\\\\.)*")\s*(:)|("(?:[^"\\\\]|\\\\.)*")|((?:true|false|null)\b)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
+      (m, propKey, colon, str, bool, num) => {
+        if (propKey) return `<span class="syn-prop">${propKey}</span>${colon}`;
+        if (str)     return `<span class="syn-str">${str}</span>`;
+        if (bool)    return `<span class="syn-kw">${bool}</span>`;
+        if (num)     return `<span class="syn-num">${num}</span>`;
+        return m;
+      }
+    );
+  }
+
+  if (lang === 'css') {
+    return escaped.replace(
+      /(\/\*[\s\S]*?\*\/)|(\/\/[^\n]*)|(@[\w-]+\b)|([.#][\w-]+|[\w-]+(?=\s*\{))|(:\s*)([^;}\n]+)/g,
+      (m, blockCm, lineCm, atRule, sel, colonSep, val) => {
+        if (blockCm) return `<span class="syn-cm">${blockCm}</span>`;
+        if (lineCm)  return `<span class="syn-cm">${lineCm}</span>`;
+        if (atRule)  return `<span class="syn-kw">${atRule}</span>`;
+        if (sel)     return `<span class="syn-sel">${sel}</span>`;
+        if (colonSep && val) return `${colonSep}<span class="syn-val">${val}</span>`;
+        return m;
+      }
+    );
+  }
+
+  if (lang === 'html' || lang === 'xml') {
+    return escaped.replace(
+      /(&lt;!--[\s\S]*?--&gt;)|(&lt;\/?)([\w-]+)((?:\s+[\w-]+(?:=&quot;[^&]*?&quot;|=&#x27;[^&]*?&#x27;|=\{[^}]*\}|=[^\s&gt;]*)?)*)(\s*\/?\s*&gt;)/g,
+      (m, comment, open, tag, attrs, close) => {
+        if (comment) return `<span class="syn-cm">${comment}</span>`;
+        const highlightedAttrs = attrs.replace(
+          /([\w-]+)(=)(&quot;[^&]*?&quot;|&#x27;[^&]*?&#x27;|\{[^}]*\}|[^\s&gt;]*)/g,
+          (am, name, eq, val) => `<span class="syn-attr">${name}</span>${eq}<span class="syn-str">${val}</span>`
+        );
+        return `${open}<span class="syn-tag">${tag}</span>${highlightedAttrs}${close}`;
+      }
+    );
+  }
+
+  // JS / TS / JSX / TSX
+  return escaped.replace(JS_HIGHLIGHT_RE,
+    (m, comment, str, regex, kw, tsKw, literal, num, op) => {
+      if (comment) return `<span class="syn-cm">${comment}</span>`;
+      if (str)     return `<span class="syn-str">${str}</span>`;
+      if (regex)   return `<span class="syn-re">${regex}</span>`;
+      if (kw)      return `<span class="syn-kw">${kw}</span>`;
+      if (tsKw)    return `<span class="syn-type">${tsKw}</span>`;
+      if (literal) return `<span class="syn-kw">${literal}</span>`;
+      if (num)     return `<span class="syn-num">${num}</span>`;
+      if (op)      return `<span class="syn-op">${op}</span>`;
+      return m;
+    }
+  );
+}
+
+function totalComments() {
+  return Object.values(state.comments).filter(v => v.trim()).length;
+}
+
+function fileCommentCount(fi) {
+  return FILES[fi].hunks.reduce((n, _, hi) =>
+    n + ((state.comments[key(fi, hi)] || '').trim() ? 1 : 0), 0);
+}
+
+// ── File list ──────────────────────────────────────────────────────────────
+function renderFileList() {
+  const nav = document.getElementById('file-list');
+  const heading = nav.querySelector('.list-heading');
+  nav.innerHTML = '';
+  nav.appendChild(heading);
+
+  FILES.forEach((f, fi) => {
+    const count = fileCommentCount(fi);
+    const el = document.createElement('div');
+    el.className = 'file-item' + (fi === state.file ? ' active' : '');
+    el.innerHTML =
+      `<span class="file-status ${STATUS_CLASS[f.status] || ''}">${STATUS_ICON[f.status] || '?'}</span>` +
+      `<span class="file-name" title="${esc(f.path)}">${esc(f.path.split('/').pop())}</span>` +
+      (count ? `<span class="file-badge">${count}</span>` : '');
+    el.addEventListener('click', () => { state.file = fi; state.hunk = 0; renderAll(); });
+    nav.appendChild(el);
+  });
+}
+
+// ── Diff panel ─────────────────────────────────────────────────────────────
+function renderDiffPanel() {
+  const panel = document.getElementById('diff-panel');
+  if (!FILES.length) { panel.innerHTML = '<p id="empty">No changes found.</p>'; return; }
+
+  const fi   = state.file;
+  const f    = FILES[fi];
+  const hi   = state.hunk;
+  const hunk = f.hunks[hi];
+  const k    = key(fi, hi);
+  const cur  = state.comments[k] || '';
+
+  let html = `<div id="hunk-bar">
+    <span id="file-title">${esc(f.path)}</span>
+    <span id="hunk-counter">${f.hunks.length ? `${hi + 1} / ${f.hunks.length}` : 'no hunks'}</span>
+    <button class="hunk-btn" id="btn-prev" ${hi === 0 ? 'disabled' : ''}>← prev</button>
+    <button class="hunk-btn" id="btn-next" ${hi >= f.hunks.length - 1 ? 'disabled' : ''}>next →</button>
+  </div>`;
+
+  if (!hunk) {
+    panel.innerHTML = html + '<p style="color:var(--dim)">No hunks in this file.</p>';
+    return;
+  }
+
+  html += `<div class="hunk-header-line">${esc(hunk.header)}</div>`;
+
+  const lang = getLang(f.path);
+  const beforeContent = hunk.isPureAddition
+    ? '<span class="empty-code">(pure addition)</span>'
+    : (hunk.before ? highlight(hunk.before, lang) : '<span class="empty-code">(empty)</span>');
+  const afterContent = hunk.isPureDeletion
+    ? '<span class="empty-code">(pure deletion)</span>'
+    : (hunk.after ? highlight(hunk.after, lang) : '<span class="empty-code">(empty)</span>');
+
+  html += `<div class="diff-columns">
+    <div class="diff-col diff-col-before">
+      <div class="diff-col-label label-before">− before</div>
+      <div class="diff-pre-wrap"><pre class="diff-pre bg-before">${beforeContent}</pre></div>
+    </div>
+    <div class="diff-col diff-col-after">
+      <div class="diff-col-label label-after">+ after</div>
+      <div class="diff-pre-wrap"><pre class="diff-pre bg-after">${afterContent}</pre></div>
+    </div>
+  </div>`;
+
+  html += `<div>
+    <div class="comment-label">comment for this hunk</div>
+    <textarea class="comment${cur.trim() ? ' has-value' : ''}"
+      id="comment-input"
+      placeholder="Leave a comment for the AI to address…">${esc(cur)}</textarea>
+  </div>`;
+
+  panel.innerHTML = html;
+
+  document.getElementById('btn-prev').addEventListener('click', () => { state.hunk--; renderAll(); });
+  document.getElementById('btn-next').addEventListener('click', () => { state.hunk++; renderAll(); });
+
+  const ta = document.getElementById('comment-input');
+  ta.addEventListener('input', () => {
+    state.comments[k] = ta.value;
+    ta.classList.toggle('has-value', !!ta.value.trim());
+    updateSubmitBtn();
+    renderFileList();
+  });
+  ta.focus();
+}
+
+// ── Submit button ──────────────────────────────────────────────────────────
+function updateSubmitBtn() {
+  const n = totalComments();
+  document.getElementById('comment-summary').textContent =
+    n ? `${n} comment${n !== 1 ? 's' : ''}` : '';
+}
+
+function renderAll() { renderFileList(); renderDiffPanel(); updateSubmitBtn(); }
+
+// ── Submit ─────────────────────────────────────────────────────────────────
+document.getElementById('submit-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'submitting…';
+  try {
+    const res = await fetch('/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ comments: state.comments }),
+    });
+    if (res.ok) {
+      document.getElementById('done-overlay').classList.add('visible');
+      setTimeout(() => window.open('', '_self').close(), 1000);
+    } else {
+      throw new Error(`HTTP ${res.status}`);
+    }
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Submit';
+    alert('Submission failed: ' + e.message);
+  }
+});
+
+// ── Keyboard shortcuts ─────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  const isCmd = e.metaKey || e.ctrlKey;
+
+  if (isCmd && e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('submit-btn').click();
+    return;
+  }
+
+  if (isCmd && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) {
+    e.preventDefault();
+    const f = FILES[state.file];
+    if (!f) return;
+    if      (e.key === 'ArrowRight' && state.hunk < f.hunks.length - 1) { state.hunk++;                  renderAll(); }
+    else if (e.key === 'ArrowLeft'  && state.hunk > 0)                  { state.hunk--;                  renderAll(); }
+    else if (e.key === 'ArrowDown'  && state.file < FILES.length - 1)   { state.file++; state.hunk = 0; renderAll(); }
+    else if (e.key === 'ArrowUp'    && state.file > 0)                  { state.file--; state.hunk = 0; renderAll(); }
+  }
+});
+
+renderAll();
+</script>
+</body>
+</html>

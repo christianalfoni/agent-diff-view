@@ -1,12 +1,13 @@
 {
   "name": "agent-diff-view",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Browser-based interactive git diff reviewer for AI coding agents",
   "bin": {
     "agent-diff-view": "./agent-diff-view"
   },
   "files": [
-    "agent-diff-view"
+    "agent-diff-view",
+    "ui.html"
   ],
   "engines": {
     "node": ">=16"
