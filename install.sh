@@ -6,9 +6,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # ── Install the changes script ────────────────────────────────────────────────
 INSTALL_DIR="${HOME}/.local/bin"
 mkdir -p "$INSTALL_DIR"
-cp "$SCRIPT_DIR/changes" "$INSTALL_DIR/changes"
-chmod +x "$INSTALL_DIR/changes"
-echo "✓  Installed: $INSTALL_DIR/changes"
+cp "$SCRIPT_DIR/claude-diff-view" "$INSTALL_DIR/claude-diff-view"
+chmod +x "$INSTALL_DIR/claude-diff-view"
+echo "✓  Installed: $INSTALL_DIR/claude-diff-view"
 
 # Warn if not on PATH
 if ! command -v changes &>/dev/null; then

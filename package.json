@@ -3,10 +3,10 @@
   "version": "1.0.1",
   "description": "Browser-based interactive git diff reviewer for Claude Code",
   "bin": {
-    "changes": "./changes"
+    "claude-diff-view": "./claude-diff-view"
   },
   "files": [
-    "changes"
+    "claude-diff-view"
   ],
   "engines": {
     "node": ">=16"
